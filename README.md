@@ -12,19 +12,15 @@
 
 ## 功能
 
-| 功能 | 触发方式 | macOS | Windows |
-|------|----------|-------|---------|
-| 网速显示 | 自动 | `↓/↑` 2s 刷新 | 同左 |
-| 内存显示 | 自动 | `RAM X/Y (Z%)` 5s 刷新 | ⛔ 不支持 |
-| 内存预警颜色 | 自动 | >90% 红 / >70% 黄 | ⛔ |
-| 进程网络 Top N | `/net-top [N]` | 进程吞吐量（`nettop` 采样 4s），N 默认 10 | TCP 连接数（`Get-NetTCPConnection`），N 默认 10 |
-| 进程内存 Top N | `/mem-top [N]` | 进程 RSS，N 默认 20 | ⛔ 不支持 |
-| 网速开关 | `/net-toggle` | 持久化 | 同左 |
-| 内存开关 | `/mem-toggle` | 持久化 | ⛔ |
-| 内存颜色开关 | `/mem-warn` | 持久化 | ⛔ |
-| 一键开关 | `/sys-toggle` | 同时切换两者 | 仅切换网速 |
+| 功能 | macOS | Windows |
+|------|-------|---------|
+| 网速显示（2s 刷新） | ✅ | ✅ |
+| 内存显示（5s 刷新） | ✅ | ⛔ |
+| 内存预警颜色（>90% 红 / >70% 黄） | ✅ 可开关 | ⛔ |
+| 进程网络 Top N（默认 10） | ✅ 吞吐量 | ✅ TCP 连接数 |
+| 进程内存 Top N（默认 20） | ✅ RSS | ⛔ |
 
-> **Windows 说明**：Windows 无 `nettop` 等价物，`/net-top` 展示 TCP 连接数（近似活跃度），不是吞吐量。内存监控仅 macOS（依赖 `vm_stat` + `sysctl hw.memsize`）。
+> **Windows 说明**：Windows 无 `nettop` 等价物，网络 top 展示 TCP 连接数（近似活跃度），不是吞吐量。内存监控仅 macOS（依赖 `vm_stat` + `sysctl hw.memsize`）。
 
 ## 安装
 
@@ -37,16 +33,41 @@ git clone https://github.com/QiuHua9/pi-sys-monitor.git sys-monitor
 
 ## 命令
 
-| 命令 | 作用 |
-|------|------|
-| `/net-top [N]` | top N 进程网络活动（4s 采样），N 默认 10，上限 100 |
-| `/mem-top [N]` | top N 进程内存（RSS），N 默认 20，上限 100 |
-| `/net-toggle` | 开/关网速显示 |
-| `/mem-toggle` | 开/关内存显示 |
-| `/mem-warn` | 开/关内存预警颜色 |
-| `/sys-toggle` | 同时开/关两者（任一开 → 全关；全关 → 全开） |
+所有操作通过单一入口 `/sys-monitor`。
 
-所有 toggle 立即生效，配置持久化到磁盘。
+```
+/sys-monitor                       显示当前状态（同 status）
+/sys-monitor help                  完整帮助
+/sys-monitor status                显示当前状态
+
+# 网络
+/sys-monitor net                   网络进程 top（默认 10）
+/sys-monitor net 20                网络 top 20
+/sys-monitor net top 20            同上（显式 top）
+/sys-monitor net on                启用网速显示
+/sys-monitor net off               关闭网速显示
+/sys-monitor net toggle            切换网速显示
+
+# 内存（仅 macOS）
+/sys-monitor mem                   内存进程 top（默认 20）
+/sys-monitor mem 50                内存 top 50
+/sys-monitor mem top 50            同上
+/sys-monitor mem on                启用内存显示
+/sys-monitor mem off               关闭内存显示
+/sys-monitor mem toggle            切换内存显示
+/sys-monitor mem warn              切换颜色预警
+/sys-monitor mem warn on           显式启用颜色预警
+/sys-monitor mem warn off          显式关闭颜色预警
+
+# 全部
+/sys-monitor all on                全开
+/sys-monitor all off               全关
+/sys-monitor all toggle            全切换（任一开 → 全关；全关 → 全开）
+```
+
+**自动补全**：输入 `/sys-monitor ` 后会提示所有子命令；继续输入会按前缀过滤。
+
+**N 上限**：进程 top 的 N 上限 100，超过自动截断，防止 widget 过长。
 
 ## 配置
 
@@ -69,13 +90,10 @@ git clone https://github.com/QiuHua9/pi-sys-monitor.git sys-monitor
 
 ### 配置修改方式
 
-- **命令**（推荐）：`/net-toggle`、`/mem-toggle`、`/mem-warn`、`/sys-toggle`，立即生效 + 持久化
+- **命令**（推荐）：`/sys-monitor net on|off|toggle`、`/sys-monitor mem on|off|toggle`、`/sys-monitor mem warn [on|off]`、`/sys-monitor all on|off|toggle`，立即生效 + 持久化
 - **手动编辑**：直接改 `~/.pi/agent/sys-monitor.json`，执行 `/reload` 生效
 
-JSON 格式错误时会回退到默认配置，不影响插件加载。
-```
-
-可手动编辑或用 toggle 命令切换。重启 pi 按配置加载。
+JSON 解析失败时回退到默认配置，不影响插件加载。
 
 ## 兼容性
 
@@ -128,13 +146,13 @@ JSON 格式错误时会回退到默认配置，不影响插件加载。
 
 ### 内存（进程）
 
-`ps -axo pid,rss,comm` → 按 RSS 排序取 top 10。
+`ps -axo pid,rss,comm` → 按 RSS 排序取 top N。
 
 ## 文件结构
 
 ```
 sys-monitor/
-├── index.ts    # 入口：注册命令、生命周期、footer 组合
+├── index.ts    # 入口：单命令 dispatcher、生命周期、footer 组合
 ├── net.ts      # 网络监控工厂（macOS + Windows）
 ├── mem.ts      # 内存监控工厂（macOS only）
 ├── util.ts     # 共享：config、formatSpeed、formatBytes、buildTopLines
@@ -142,16 +160,20 @@ sys-monitor/
 └── README.md
 ```
 
-## 从旧插件迁移
+## 从旧命令迁移
 
-本插件是 `network-monitor` 和 `mem-monitor` 的合并版。旧的配置文件 `~/.pi/agent/network-monitor.json` 和 `mem-monitor.json` 不会被读取——默认就是开启状态，无需手动迁移。
+v1 使用的多个命令（`/net-top`、`/mem-top`、`/net-toggle`、`/mem-toggle`、`/mem-warn`、`/sys-toggle`）已合并为单一入口 `/sys-monitor`。对照表：
 
-建议删除旧的插件目录：
+| 旧命令 | 新写法 |
+|--------|--------|
+| `/net-top 20` | `/sys-monitor net 20` |
+| `/mem-top 50` | `/sys-monitor mem 50` |
+| `/net-toggle` | `/sys-monitor net toggle` |
+| `/mem-toggle` | `/sys-monitor mem toggle` |
+| `/mem-warn` | `/sys-monitor mem warn` |
+| `/sys-toggle` | `/sys-monitor all toggle` |
 
-```bash
-rm -rf ~/.pi/agent/extensions/network-monitor
-rm -rf ~/.pi/agent/extensions/mem-monitor
-```
+旧命令在合并版中已删除。
 
 ## License
 
