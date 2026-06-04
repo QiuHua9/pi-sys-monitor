@@ -105,9 +105,9 @@ JSON 解析失败时回退到默认配置,不影响插件加载。
 
 ## 性能
 
-- **CPU**：几乎可忽略（异步 `exec`，不阻塞事件循环）
-- **内存**：<1MB
-- **防重叠**：每个模块独立 `ticking` 守卫，上一轮未完成时跳过本轮
+- **CPU**:几乎可忽略(异步 `exec`,不阻塞事件循环)
+- **内存**:<1MB
+- **防重叠**:每个模块独立 `ticking` 守卫,上一轮未完成时跳过本轮
 
 ## 实现原理
 
@@ -150,27 +150,12 @@ JSON 解析失败时回退到默认配置,不影响插件加载。
 ```
 sys-monitor/
 ├── index.ts    # 入口:单命令 dispatcher、生命周期、footer 组合
-├── net.ts      # 网络监控工厂(macOS + Windows)
-├── mem.ts      # 内存监控工厂(macOS only)
+├── net.ts      # 网络监控实现（macOS + Windows）
+├── mem.ts      # 内存监控实现（macOS only）
 ├── util.ts     # 共享:config、formatSpeed、formatBytes、buildTopLines
 ├── LICENSE
 └── README.md
 ```
-
-## 从旧命令迁移
-
-v1 使用的多个命令(`/net-top`、`/mem-top`、`/net-toggle`、`/mem-toggle`、`/mem-warn`、`/sys-toggle`)已合并为单一入口 `/sys-monitor`。对照表:
-
-| 旧命令 | 新写法 |
-|--------|--------|
-| `/net-top 20` | `/sys-monitor net 20` |
-| `/mem-top 50` | `/sys-monitor mem 50` |
-| `/net-toggle` | `/sys-monitor net toggle` |
-| `/mem-toggle` | `/sys-monitor mem toggle` |
-| `/mem-warn` | `/sys-monitor mem warn` |
-| `/sys-toggle` | `/sys-monitor all toggle` |
-
-旧命令在合并版中已删除。
 
 ## License
 
