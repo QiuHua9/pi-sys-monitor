@@ -59,8 +59,20 @@ git clone https://github.com/QiuHua9/pi-sys-monitor.git sys-monitor
 }
 ```
 
-- `memory.enabled` — 是否显示内存
-- `memory.warning` — 是否启用颜色预警（>90% 红 / >70% 黄，使用 pi theme 的 `error` / `warning` token）
+### 参数列表
+
+| 路径 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `network.enabled` | boolean | `true` | 是否在 footer 显示网速（`↓/↑`） |
+| `memory.enabled` | boolean | `true` | 是否在 footer 显示内存（`RAM X/Y (Z%)`），仅 macOS 生效 |
+| `memory.warning` | boolean | `true` | 是否启用内存预警颜色，仅 macOS 生效。阈值固定：>90% 红 / >70% 黄，使用 pi theme 的 `error` / `warning` token，跟随主题变化 |
+
+### 配置修改方式
+
+- **命令**（推荐）：`/net-toggle`、`/mem-toggle`、`/mem-warn`、`/sys-toggle`，立即生效 + 持久化
+- **手动编辑**：直接改 `~/.pi/agent/sys-monitor.json`，执行 `/reload` 生效
+
+JSON 格式错误时会回退到默认配置，不影响插件加载。
 ```
 
 可手动编辑或用 toggle 命令切换。重启 pi 按配置加载。
