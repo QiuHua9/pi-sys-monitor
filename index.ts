@@ -34,7 +34,7 @@ export default function (pi: ExtensionAPI) {
     const parts: string[] = [];
     if (config.network.enabled && netText) parts.push(netText);
     if (IS_MACOS && config.memory.enabled && memText) parts.push(memText);
-    const text = parts.join("  ");
+    const text = parts.join("   ");
     ctx?.ui.setStatus(STATUS_KEY, text);
   }
 
