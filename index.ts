@@ -53,9 +53,11 @@ export default function (pi: ExtensionAPI) {
           render();
         },
         colorize: (plain, pct) => {
-          if (!config.memory.warning || !ctx) return plain;
-          if (pct > 90) return ctx.theme.fg("error", plain);
-          if (pct > 70) return ctx.theme.fg("warning", plain);
+          if (!config.memory.warning) return plain;
+          const t = ctx?.ui?.theme;
+          if (!t) return plain;
+          if (pct > 90) return t.fg("error", plain);
+          if (pct > 70) return t.fg("warning", plain);
           return plain;
         },
       })
