@@ -18,7 +18,7 @@ import { loadConfig, saveConfig, formatBytes } from "./util";
 //   /sys-monitor net [N]          → net top N (default 10)
 //   /sys-monitor net top [N]      → same
 //   /sys-monitor net on|off|toggle
-//   /sys-monitor net stat [on|off|reset]  → persistent totals widget
+//   /sys-monitor net stat [reset]        → show totals widget (auto-clears)
 //
 //   /sys-monitor mem [N]          → mem top N (default 20, macOS only)
 //   /sys-monitor mem top [N]      → same
@@ -45,23 +45,12 @@ export default function (pi: ExtensionAPI) {
 
   let netText = "";
   let memText = "";
-  let netStatOn = false; // widget mode: persistent totals display
 
   function render() {
     const parts: string[] = [];
     if (config.network.enabled && netText) parts.push(netText);
     if (IS_MACOS && config.memory.enabled && memText) parts.push(memText);
     ctx?.ui.setStatus(STATUS_KEY, parts.join(" | "));
-
-    // Update net stat widget if enabled (mode B: persistent widget)
-    if (netStatOn) {
-      const t = net.getTotals();
-      const lines = [
-        "Network totals since session start",
-        `Σ↓ ${formatBytes(t.down)}    Σ↑ ${formatBytes(t.up)}`,
-      ];
-      ctx?.ui.setWidget(NET_STAT_WIDGET, lines);
-    }
   }
 
   const net = createNetworkMonitor({
@@ -147,8 +136,7 @@ export default function (pi: ExtensionAPI) {
       "    /sys-monitor net [N]             Top N processes by network (default 10)",
       "    /sys-monitor net top [N]         Same as above",
       "    /sys-monitor net on|off|toggle   Enable / disable / toggle footer display",
-      "    /sys-monitor net stat            Toggle persistent totals widget",
-      "    /sys-monitor net stat on|off     Show / hide totals widget",
+      "    /sys-monitor net stat            Show totals widget (auto-clears 10s)",
       "    /sys-monitor net stat reset      Reset totals to 0",
       "",
       "  Memory (macOS only):",
@@ -189,6 +177,7 @@ export default function (pi: ExtensionAPI) {
     { value: "on", label: "on", description: "Enable footer display" },
     { value: "off", label: "off", description: "Disable footer display" },
     { value: "toggle", label: "toggle", description: "Toggle footer display" },
+    { value: "stat", label: "stat [reset]", description: "Show totals widget (auto-clears)" },
   ];
 
   const MEM_SUB: AutocompleteItem[] = [
@@ -217,7 +206,12 @@ export default function (pi: ExtensionAPI) {
     // "net ..." / "mem ..." / "all ..."
     if (head === "net") {
       if (rest === "") return NET_SUB;
-      // If first remaining token is a digit → top-N suggestion; otherwise filter NET_SUB
+      if (rest.startsWith("stat")) {
+        return [
+          { value: "stat", label: "stat", description: "Show totals widget (auto-clears)" },
+          { value: "stat reset", label: "stat reset", description: "Reset totals to 0" },
+        ].filter((i) => i.value.startsWith(rest));
+      }
       if (/^\d/.test(rest)) return null;
       return NET_SUB.filter((i) => i.value.startsWith(rest));
     }
@@ -292,6 +286,34 @@ export default function (pi: ExtensionAPI) {
   //   net on|off|toggle
   async function handleNet(rest: string[], cmdCtx: ExtensionContext) {
     const head = rest[0] || "";
+
+    // net stat [reset]
+    if (head === "stat") {
+      const op = rest[1] || "";
+      if (op === "reset") {
+        net.resetTotals();
+        cmdCtx.ui.notify("Net stat totals reset to 0", "info");
+      } else if (op === "") {
+        const t = net.getTotals();
+        const lines = [
+          "Network totals since session start",
+          "─".repeat(50),
+          `Σ↓ ${formatBytes(t.down)}    Σ↑ ${formatBytes(t.up)}`,
+          "─".repeat(50),
+          "(auto-clears in 10s. /sys-monitor net stat reset to zero)",
+        ];
+        cmdCtx.ui.setWidget(NET_STAT_WIDGET, lines);
+        setTimeout(() => {
+          try { cmdCtx.ui.setWidget(NET_STAT_WIDGET, undefined as any); } catch { /* ignore */ }
+        }, 10_000);
+      } else {
+        cmdCtx.ui.notify(
+          `Unknown stat option: "${op}". Try reset (or no arg to show).`,
+          "warning",
+        );
+      }
+      return;
+    }
 
     // net on/off/toggle
     if (head === "on" || head === "off" || head === "toggle") {

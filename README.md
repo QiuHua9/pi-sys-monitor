@@ -45,9 +45,7 @@ git clone https://github.com/QiuHua9/pi-sys-monitor.git sys-monitor
 /sys-monitor net on                启用网速显示
 /sys-monitor net off               关闭网速显示
 /sys-monitor net toggle            切换网速显示
-/sys-monitor net stat              切换累计上传下载 widget（默认不显示）
-/sys-monitor net stat on           显示累计 widget
-/sys-monitor net stat off          隐藏累计 widget
+/sys-monitor net stat              显示累计上传下载 widget（10 秒后自动消失）
 /sys-monitor net stat reset        累计清零
 
 # 内存(仅 macOS)
