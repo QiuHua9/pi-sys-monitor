@@ -52,6 +52,12 @@ export default function (pi: ExtensionAPI) {
           memText = text;
           render();
         },
+        colorize: (plain, pct) => {
+          if (!config.memory.warning || !ctx) return plain;
+          if (pct > 90) return ctx.theme.fg("error", plain);
+          if (pct > 70) return ctx.theme.fg("warning", plain);
+          return plain;
+        },
       })
     : null;
 
@@ -94,6 +100,25 @@ export default function (pi: ExtensionAPI) {
       render();
       cmdCtx.ui.notify(
         `Memory monitor ${config.memory.enabled ? "enabled" : "disabled"}`,
+        "info",
+      );
+    },
+  });
+
+  pi.registerCommand("mem-warn", {
+    description: "Toggle memory usage color warning in footer (macOS only)",
+    handler: async (_args, cmdCtx) => {
+      if (!IS_MACOS) {
+        cmdCtx.ui.notify("Memory monitor is macOS only.", "warning");
+        return;
+      }
+      config.memory.warning = !config.memory.warning;
+      saveConfig(config);
+      // Force a refresh so colors update immediately
+      await mem?.stop();
+      await applyMemoryConfig();
+      cmdCtx.ui.notify(
+        `Memory warning color ${config.memory.warning ? "enabled" : "disabled"}`,
         "info",
       );
     },

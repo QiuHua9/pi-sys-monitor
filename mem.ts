@@ -90,6 +90,8 @@ export interface MemoryMonitor {
 export function createMemoryMonitor(opts: {
   onUpdate: (text: string) => void;
   intervalMs?: number;
+  /** Optional colorization hook; receives percent 0-100, returns ANSI-styled text. */
+  colorize?: (displayText: string, percent: number) => string;
 }): MemoryMonitor {
   const intervalMs = opts.intervalMs ?? 5000;
   let interval: ReturnType<typeof setInterval> | null = null;
@@ -107,7 +109,8 @@ export function createMemoryMonitor(opts: {
         (stats.active + stats.wired + stats.compressorOccupied) *
         stats.pageSize;
       const pct = (used / total) * 100;
-      opts.onUpdate(`RAM ${formatBytes(used)}/${formatBytes(total)} (${pct.toFixed(0)}%)`);
+      const plain = `RAM ${formatBytes(used)}/${formatBytes(total)} (${pct.toFixed(0)}%)`;
+      opts.onUpdate(opts.colorize ? opts.colorize(plain, pct) : plain);
     } finally {
       ticking = false;
     }

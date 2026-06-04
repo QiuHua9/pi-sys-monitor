@@ -16,10 +16,12 @@
 |------|----------|-------|---------|
 | 网速显示 | 自动 | `↓/↑` 2s 刷新 | 同左 |
 | 内存显示 | 自动 | `RAM X/Y (Z%)` 5s 刷新 | ⛔ 不支持 |
+| 内存预警颜色 | 自动 | >90% 红 / >70% 黄 | ⛔ |
 | 进程网络 Top 10 | `/net-top` | 进程吞吐量（`nettop` 采样 4s） | TCP 连接数（`Get-NetTCPConnection`） |
 | 进程内存 Top 10 | `/mem-top` | 进程 RSS | ⛔ 不支持 |
 | 网速开关 | `/net-toggle` | 持久化 | 同左 |
 | 内存开关 | `/mem-toggle` | 持久化 | ⛔ |
+| 内存颜色开关 | `/mem-warn` | 持久化 | ⛔ |
 | 一键开关 | `/sys-toggle` | 同时切换两者 | 仅切换网速 |
 
 > **Windows 说明**：Windows 无 `nettop` 等价物，`/net-top` 展示 TCP 连接数（近似活跃度），不是吞吐量。内存监控仅 macOS（依赖 `vm_stat` + `sysctl hw.memsize`）。
@@ -41,6 +43,7 @@ git clone https://github.com/QiuHua9/pi-sys-monitor.git sys-monitor
 | `/mem-top` | top 10 进程内存（RSS） |
 | `/net-toggle` | 开/关网速显示 |
 | `/mem-toggle` | 开/关内存显示 |
+| `/mem-warn` | 开/关内存预警颜色 |
 | `/sys-toggle` | 同时开/关两者（任一开 → 全关；全关 → 全开） |
 
 所有 toggle 立即生效，配置持久化到磁盘。
@@ -52,8 +55,12 @@ git clone https://github.com/QiuHua9/pi-sys-monitor.git sys-monitor
 ```json
 {
   "network": { "enabled": true },
-  "memory": { "enabled": true }
+  "memory": { "enabled": true, "warning": true }
 }
+```
+
+- `memory.enabled` — 是否显示内存
+- `memory.warning` — 是否启用颜色预警（>90% 红 / >70% 黄，使用 pi theme 的 `error` / `warning` token）
 ```
 
 可手动编辑或用 toggle 命令切换。重启 pi 按配置加载。

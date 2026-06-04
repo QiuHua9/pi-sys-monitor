@@ -11,12 +11,12 @@ export const CONFIG_PATH = join(homedir(), ".pi", "agent", "sys-monitor.json");
 
 export interface Config {
   network: { enabled: boolean };
-  memory: { enabled: boolean };
+  memory: { enabled: boolean; warning: boolean };
 }
 
 export const DEFAULT_CONFIG: Config = {
   network: { enabled: true },
-  memory: { enabled: true },
+  memory: { enabled: true, warning: true },
 };
 
 export function loadConfig(): Config {
@@ -25,7 +25,10 @@ export function loadConfig(): Config {
     const raw = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
     return {
       network: { enabled: raw?.network?.enabled ?? DEFAULT_CONFIG.network.enabled },
-      memory: { enabled: raw?.memory?.enabled ?? DEFAULT_CONFIG.memory.enabled },
+      memory: {
+        enabled: raw?.memory?.enabled ?? DEFAULT_CONFIG.memory.enabled,
+        warning: raw?.memory?.warning ?? DEFAULT_CONFIG.memory.warning,
+      },
     };
   } catch {
     return structuredClone(DEFAULT_CONFIG);
