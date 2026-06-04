@@ -39,12 +39,16 @@ git clone https://github.com/QiuHua9/pi-sys-monitor.git sys-monitor
 /sys-monitor status                显示当前状态
 
 # 网络
-/sys-monitor net                   网络进程 top(默认 10)
+/sys-monitor net                   网络进程 top（默认 10）
 /sys-monitor net 20                网络 top 20
-/sys-monitor net top 20            同上(显式 top)
+/sys-monitor net top 20            同上（显式 top）
 /sys-monitor net on                启用网速显示
 /sys-monitor net off               关闭网速显示
 /sys-monitor net toggle            切换网速显示
+/sys-monitor net stat              切换累计上传下载 widget（默认不显示）
+/sys-monitor net stat on           显示累计 widget
+/sys-monitor net stat off          隐藏累计 widget
+/sys-monitor net stat reset        累计清零
 
 # 内存(仅 macOS)
 /sys-monitor mem                   内存进程 top(默认 20)
@@ -150,8 +154,8 @@ JSON 解析失败时回退到默认配置,不影响插件加载。
 ```
 sys-monitor/
 ├── index.ts    # 入口:单命令 dispatcher、生命周期、footer 组合
-├── net.ts      # 网络监控实现（macOS + Windows）
-├── mem.ts      # 内存监控实现（macOS only）
+├── net.ts      # 网络监控实现(macOS + Windows)
+├── mem.ts      # 内存监控实现(macOS only)
 ├── util.ts     # 共享:config、formatSpeed、formatBytes、buildTopLines
 ├── LICENSE
 └── README.md

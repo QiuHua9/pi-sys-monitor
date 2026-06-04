@@ -2,7 +2,7 @@ import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-age
 import type { AutocompleteItem } from "@mariozechner/pi-tui";
 import { createNetworkMonitor } from "./net";
 import { createMemoryMonitor } from "./mem";
-import { loadConfig, saveConfig } from "./util";
+import { loadConfig, saveConfig, formatBytes } from "./util";
 
 // ============================================================
 // sys-monitor — combined network + memory plugin for pi
@@ -18,6 +18,7 @@ import { loadConfig, saveConfig } from "./util";
 //   /sys-monitor net [N]          → net top N (default 10)
 //   /sys-monitor net top [N]      → same
 //   /sys-monitor net on|off|toggle
+//   /sys-monitor net stat [on|off|reset]  → persistent totals widget
 //
 //   /sys-monitor mem [N]          → mem top N (default 20, macOS only)
 //   /sys-monitor mem top [N]      → same
@@ -32,6 +33,7 @@ const STATUS_KEY = "sys-monitor";
 const NET_WIDGET = "sys-monitor-net-top";
 const MEM_WIDGET = "sys-monitor-mem-top";
 const STATUS_WIDGET = "sys-monitor-status";
+const NET_STAT_WIDGET = "sys-monitor-net-stat";
 
 const NET_TOP_DEFAULT = 10;
 const MEM_TOP_DEFAULT = 20;
@@ -43,12 +45,23 @@ export default function (pi: ExtensionAPI) {
 
   let netText = "";
   let memText = "";
+  let netStatOn = false; // widget mode: persistent totals display
 
   function render() {
     const parts: string[] = [];
     if (config.network.enabled && netText) parts.push(netText);
     if (IS_MACOS && config.memory.enabled && memText) parts.push(memText);
     ctx?.ui.setStatus(STATUS_KEY, parts.join(" | "));
+
+    // Update net stat widget if enabled (mode B: persistent widget)
+    if (netStatOn) {
+      const t = net.getTotals();
+      const lines = [
+        "Network totals since session start",
+        `Σ↓ ${formatBytes(t.down)}    Σ↑ ${formatBytes(t.up)}`,
+      ];
+      ctx?.ui.setWidget(NET_STAT_WIDGET, lines);
+    }
   }
 
   const net = createNetworkMonitor({
@@ -134,6 +147,9 @@ export default function (pi: ExtensionAPI) {
       "    /sys-monitor net [N]             Top N processes by network (default 10)",
       "    /sys-monitor net top [N]         Same as above",
       "    /sys-monitor net on|off|toggle   Enable / disable / toggle footer display",
+      "    /sys-monitor net stat            Toggle persistent totals widget",
+      "    /sys-monitor net stat on|off     Show / hide totals widget",
+      "    /sys-monitor net stat reset      Reset totals to 0",
       "",
       "  Memory (macOS only):",
       "    /sys-monitor mem [N]             Top N processes by RSS (default 20)",
@@ -163,7 +179,7 @@ export default function (pi: ExtensionAPI) {
   const SUBCOMMANDS: { value: string; label: string; description: string }[] = [
     { value: "help", label: "help", description: "Show full usage" },
     { value: "status", label: "status", description: "Show current status" },
-    { value: "net", label: "net ...", description: "Network: top [N] | on | off | toggle" },
+    { value: "net", label: "net ...", description: "Network: top [N] | on | off | toggle | stat" },
     { value: "mem", label: "mem ...", description: "Memory: top [N] | on | off | toggle | warn" },
     { value: "all", label: "all ...", description: "Both: on | off | toggle" },
   ];
@@ -387,6 +403,7 @@ export default function (pi: ExtensionAPI) {
     mem?.stop();
     try {
       ctx?.ui.setStatus(STATUS_KEY, "");
+      ctx?.ui.setWidget(NET_STAT_WIDGET, undefined as any);
     } catch {
       /* ignore */
     }

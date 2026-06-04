@@ -182,6 +182,10 @@ export interface NetworkMonitor {
   start(): Promise<void>;
   stop(): void;
   showTop(ctx: ExtensionContext, widgetKey: string, limit: number): Promise<void>;
+  /** Cumulative bytes transferred since start(). Resets on start(). */
+  getTotals(): { down: number; up: number };
+  /** Reset cumulative totals to zero (without restarting polling). */
+  resetTotals(): void;
 }
 
 export function createNetworkMonitor(opts: {
@@ -193,6 +197,7 @@ export function createNetworkMonitor(opts: {
   let prevCounters = new Map<string, { bytesIn: number; bytesOut: number }>();
   let prevTimestamp = 0;
   let ticking = false;
+  let totals = { down: 0, up: 0 };
 
   async function pollOnce() {
     if (ticking) return;
@@ -219,6 +224,8 @@ export function createNetworkMonitor(opts: {
 
       const downStr = formatSpeed(totalDown / Math.max(elapsed, 0.5));
       const upStr = formatSpeed(totalUp / Math.max(elapsed, 0.5));
+      totals.down += totalDown;
+      totals.up += totalUp;
       opts.onUpdate(`↓${downStr} ↑${upStr}`);
     } finally {
       ticking = false;
@@ -228,6 +235,7 @@ export function createNetworkMonitor(opts: {
   return {
     async start() {
       if (interval) return;
+      totals = { down: 0, up: 0 };
       const init = await getInterfaceCounters();
       prevTimestamp = Date.now();
       prevCounters = new Map(
@@ -242,6 +250,12 @@ export function createNetworkMonitor(opts: {
         interval = null;
       }
       opts.onUpdate("");
+    },
+    getTotals() {
+      return { down: totals.down, up: totals.up };
+    },
+    resetTotals() {
+      totals = { down: 0, up: 0 };
     },
     async showTop(ctx, widgetKey, limit) {
       if (IS_MACOS) {
