@@ -84,7 +84,7 @@ function getTopProcesses(limit: number): Promise<ProcEntry[]> {
 export interface MemoryMonitor {
   start(): Promise<void>;
   stop(): void;
-  showTop(ctx: ExtensionContext, widgetKey: string): Promise<void>;
+  showTop(ctx: ExtensionContext, widgetKey: string, limit: number): Promise<void>;
 }
 
 export function createMemoryMonitor(opts: {
@@ -129,16 +129,16 @@ export function createMemoryMonitor(opts: {
       }
       opts.onUpdate("");
     },
-    async showTop(ctx, widgetKey) {
+    async showTop(ctx, widgetKey, limit) {
       try {
         ctx.ui.notify("Querying processes ...", "info");
-        const top = await getTopProcesses(10);
+        const top = await getTopProcesses(limit);
         if (top.length === 0) {
           ctx.ui.notify("Failed to enumerate processes.", "warning");
           return;
         }
         const lines = buildTopLines(
-          "Top 10 processes by memory (RSS):",
+          `Top ${top.length} processes by memory (RSS):`,
           top.map((p) => ({
             name: p.name,
             pid: p.pid,

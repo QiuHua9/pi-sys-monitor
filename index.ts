@@ -144,23 +144,29 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
+  function parseTopLimit(args: string, fallback: number): number {
+    const n = parseInt((args || "").trim(), 10);
+    if (!isFinite(n) || n <= 0) return fallback;
+    return Math.min(n, 100); // cap at 100 to keep widget readable
+  }
+
   pi.registerCommand("net-top", {
-    description: IS_MACOS
-      ? "Show top 10 processes by network throughput (4s sample)"
-      : "Show top 10 processes by TCP connection count",
-    handler: async (_args, cmdCtx) => {
-      await net.showTop(cmdCtx, NET_WIDGET);
+    description:
+      "Show top processes by network activity. Usage: /net-top [N] (default 10, max 100)",
+    handler: async (args, cmdCtx) => {
+      await net.showTop(cmdCtx, NET_WIDGET, parseTopLimit(args, 10));
     },
   });
 
   pi.registerCommand("mem-top", {
-    description: "Show top 10 processes by memory (RSS, macOS only)",
-    handler: async (_args, cmdCtx) => {
+    description:
+      "Show top processes by memory (RSS, macOS only). Usage: /mem-top [N] (default 20, max 100)",
+    handler: async (args, cmdCtx) => {
       if (!IS_MACOS || !mem) {
         cmdCtx.ui.notify("Memory monitor is macOS only.", "warning");
         return;
       }
-      await mem.showTop(cmdCtx, MEM_WIDGET);
+      await mem.showTop(cmdCtx, MEM_WIDGET, parseTopLimit(args, 20));
     },
   });
 

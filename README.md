@@ -17,8 +17,8 @@
 | 网速显示 | 自动 | `↓/↑` 2s 刷新 | 同左 |
 | 内存显示 | 自动 | `RAM X/Y (Z%)` 5s 刷新 | ⛔ 不支持 |
 | 内存预警颜色 | 自动 | >90% 红 / >70% 黄 | ⛔ |
-| 进程网络 Top 10 | `/net-top` | 进程吞吐量（`nettop` 采样 4s） | TCP 连接数（`Get-NetTCPConnection`） |
-| 进程内存 Top 10 | `/mem-top` | 进程 RSS | ⛔ 不支持 |
+| 进程网络 Top N | `/net-top [N]` | 进程吞吐量（`nettop` 采样 4s），N 默认 10 | TCP 连接数（`Get-NetTCPConnection`），N 默认 10 |
+| 进程内存 Top N | `/mem-top [N]` | 进程 RSS，N 默认 20 | ⛔ 不支持 |
 | 网速开关 | `/net-toggle` | 持久化 | 同左 |
 | 内存开关 | `/mem-toggle` | 持久化 | ⛔ |
 | 内存颜色开关 | `/mem-warn` | 持久化 | ⛔ |
@@ -39,8 +39,8 @@ git clone https://github.com/QiuHua9/pi-sys-monitor.git sys-monitor
 
 | 命令 | 作用 |
 |------|------|
-| `/net-top` | top 10 进程网络活动（4s 采样） |
-| `/mem-top` | top 10 进程内存（RSS） |
+| `/net-top [N]` | top N 进程网络活动（4s 采样），N 默认 10，上限 100 |
+| `/mem-top [N]` | top N 进程内存（RSS），N 默认 20，上限 100 |
 | `/net-toggle` | 开/关网速显示 |
 | `/mem-toggle` | 开/关内存显示 |
 | `/mem-warn` | 开/关内存预警颜色 |

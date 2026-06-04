@@ -155,7 +155,7 @@ interface WinProcEntry {
 function winProcSnapshot(): Promise<WinProcEntry[]> {
   return new Promise((resolve) => {
     exec(
-      `powershell -NoProfile -Command "Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue | Group-Object OwningProcess | Sort-Object -Descending Count | Select-Object -First 10 | ForEach-Object { $p = Get-Process -Id $_.Name -ErrorAction SilentlyContinue; Write-Output \\"$($p.ProcessName)|$($_.Name)|$($_.Count)\\" }"`,
+      `powershell -NoProfile -Command "Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue | Group-Object OwningProcess | Sort-Object -Descending Count | ForEach-Object { $p = Get-Process -Id $_.Name -ErrorAction SilentlyContinue; Write-Output \\"$($p.ProcessName)|$($_.Name)|$($_.Count)\\" }"`,
       { encoding: "utf8", timeout: 10000 },
       (_err, raw) => {
         if (!raw) { resolve([]); return; }
@@ -181,7 +181,7 @@ function winProcSnapshot(): Promise<WinProcEntry[]> {
 export interface NetworkMonitor {
   start(): Promise<void>;
   stop(): void;
-  showTop(ctx: ExtensionContext, widgetKey: string): Promise<void>;
+  showTop(ctx: ExtensionContext, widgetKey: string, limit: number): Promise<void>;
 }
 
 export function createNetworkMonitor(opts: {
@@ -243,7 +243,7 @@ export function createNetworkMonitor(opts: {
       }
       opts.onUpdate("");
     },
-    async showTop(ctx, widgetKey) {
+    async showTop(ctx, widgetKey, limit) {
       if (IS_MACOS) {
         try {
           ctx.ui.notify("Sampling network traffic (4s) …", "info");
@@ -258,10 +258,10 @@ export function createNetworkMonitor(opts: {
             return;
           }
           deltas.sort((a, b) => b.downBps + b.upBps - (a.downBps + a.upBps));
-          const top = deltas.slice(0, 10);
+          const top = deltas.slice(0, limit);
 
           const lines = buildTopLines(
-            "Top processes by network throughput (↓ + ↑ combined):",
+            `Top ${top.length} processes by network throughput (↓ + ↑ combined):`,
             top.map((p) => ({
               name: p.name,
               pid: p.pid,
@@ -284,9 +284,9 @@ export function createNetworkMonitor(opts: {
             ctx.ui.notify("No established TCP connections found.", "warning");
             return;
           }
-          const top = entries.slice(0, 10);
+          const top = entries.slice(0, limit);
           const lines = buildTopLines(
-            "Top processes by TCP connections (Windows: no per-process throughput):",
+            `Top ${top.length} processes by TCP connections (Windows: no per-process throughput):`,
             top.map((e) => ({
               name: e.name,
               pid: e.pid,
