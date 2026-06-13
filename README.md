@@ -13,12 +13,12 @@
 | 功能 | macOS | Windows |
 |------|-------|---------|
 | 网速显示(2s 刷新) | ✅ | ✅ |
-| 内存显示(5s 刷新) | ✅ | ⛔ |
-| 内存预警颜色(>90% 红 / >70% 黄) | ✅ 可开关 | ⛔ |
+| 内存显示(5s 刷新) | ✅ | ✅ |
+| 内存预警颜色(>90% 红 / >70% 黄) | ✅ 可开关 | ✅ 可开关 |
 | 进程网络 Top N(默认 10) | ✅ 吞吐量 | ✅ TCP 连接数 |
-| 进程内存 Top N(默认 20) | ✅ RSS | ⛔ |
+| 进程内存 Top N(默认 20) | ✅ RSS | ✅ Working Set |
 
-> **Windows 说明**:Windows 无 `nettop` 等价物,网络 top 展示 TCP 连接数(近似活跃度),不是吞吐量。内存监控仅 macOS(依赖 `vm_stat` + `sysctl hw.memsize`)。
+> **Windows 说明**:Windows 无 `nettop` 等价物,网络 top 展示 TCP 连接数(近似活跃度),不是吞吐量。内存进程 top 使用 Working Set(WS)指标,与 macOS 的 RSS 口径略有差异。
 
 ## 安装
 
@@ -48,7 +48,7 @@ git clone https://github.com/QiuHua9/pi-sys-monitor.git sys-monitor
 /sys-monitor net stat              显示累计上传下载 widget（10 秒后自动消失）
 /sys-monitor net stat reset        累计清零
 
-# 内存(仅 macOS)
+# 内存(macOS + Windows)
 /sys-monitor mem                   内存进程 top(默认 20)
 /sys-monitor mem 50                内存 top 50
 /sys-monitor mem top 50            同上
@@ -85,8 +85,8 @@ git clone https://github.com/QiuHua9/pi-sys-monitor.git sys-monitor
 | 路径 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `network.enabled` | boolean | `true` | 是否在 footer 显示网速(`↓/↑`) |
-| `memory.enabled` | boolean | `true` | 是否在 footer 显示内存(`RAM X/Y (Z%)`),仅 macOS 生效 |
-| `memory.warning` | boolean | `true` | 是否启用内存预警颜色,仅 macOS 生效。阈值固定:>90% 红 / >70% 黄,使用 pi theme 的 `error` / `warning` token,跟随主题变化 |
+| `memory.enabled` | boolean | `true` | 是否在 footer 显示内存(`RAM X/Y (Z%)`) |
+| `memory.warning` | boolean | `true` | 是否启用内存预警颜色。阈值固定:>90% 红 / >70% 黄,使用 pi theme 的 `error` / `warning` token,跟随主题变化 |
 
 ### 配置修改方式
 
@@ -100,7 +100,7 @@ JSON 解析失败时回退到默认配置,不影响插件加载。
 | 平台 | 网速 | 内存 |
 |------|------|------|
 | macOS | ✅ `netstat -ib` + `nettop` | ✅ `vm_stat` + `sysctl` + `ps` |
-| Windows | ✅ `netstat -e` + `Get-NetTCPConnection` | ⛔ |
+| Windows | ✅ `netstat -e` + `Get-NetTCPConnection` | ✅ `Get-CimInstance` + `Get-Process` |
 | Linux | ⛔ | ⛔ |
 
 无 sudo / 管理员权限要求。
@@ -135,6 +135,8 @@ JSON 解析失败时回退到默认配置,不影响插件加载。
 
 ### 内存(总量)
 
+**macOS**
+
 | 指标 | 数据源 |
 |------|--------|
 | 总量 | `sysctl -n hw.memsize`(首次后缓存) |
@@ -143,9 +145,19 @@ JSON 解析失败时回退到默认配置,不影响插件加载。
 
 "已用"口径与 macOS 活动监视器一致。
 
+**Windows**
+
+| 指标 | 数据源 |
+|------|--------|
+| 总量 | `Get-CimInstance Win32_ComputerSystem` → `TotalPhysicalMemory`(首次后缓存) |
+| 已用 | `TotalVisibleMemorySize - FreePhysicalMemory`,来自 `Win32_OperatingSystem` |
+
 ### 内存(进程)
 
-`ps -axo pid,rss,comm` → 按 RSS 排序取 top N。
+| 平台 | 命令 | 指标 |
+|------|------|------|
+| macOS | `ps -axo pid,rss,comm` | RSS |
+| Windows | `Get-Process \| Sort-Object WS -Descending` | Working Set |
 
 ## 文件结构
 
@@ -153,7 +165,7 @@ JSON 解析失败时回退到默认配置,不影响插件加载。
 sys-monitor/
 ├── index.ts    # 入口:单命令 dispatcher、生命周期、footer 组合
 ├── net.ts      # 网络监控实现(macOS + Windows)
-├── mem.ts      # 内存监控实现(macOS only)
+├── mem.ts      # 内存监控实现(macOS + Windows)
 ├── util.ts     # 共享:config、formatSpeed、formatBytes、buildTopLines
 ├── LICENSE
 └── README.md

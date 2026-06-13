@@ -20,7 +20,7 @@ import { loadConfig, saveConfig, formatBytes } from "./util";
 //   /sys-monitor net on|off|toggle
 //   /sys-monitor net stat [reset]        → show totals widget (auto-clears)
 //
-//   /sys-monitor mem [N]          → mem top N (default 20, macOS only)
+//   /sys-monitor mem [N]          → mem top N (default 20)
 //   /sys-monitor mem top [N]      → same
 //   /sys-monitor mem on|off|toggle
 //   /sys-monitor mem warn [on|off]  → toggle/set color warning
@@ -28,7 +28,7 @@ import { loadConfig, saveConfig, formatBytes } from "./util";
 //   /sys-monitor all on|off|toggle
 // ============================================================
 
-const IS_MACOS = process.platform === "darwin";
+const MEM_SUPPORTED = process.platform === "darwin" || process.platform === "win32";
 const STATUS_KEY = "sys-monitor";
 const NET_WIDGET = "sys-monitor-net-top";
 const MEM_WIDGET = "sys-monitor-mem-top";
@@ -49,7 +49,7 @@ export default function (pi: ExtensionAPI) {
   function render() {
     const parts: string[] = [];
     if (config.network.enabled && netText) parts.push(netText);
-    if (IS_MACOS && config.memory.enabled && memText) parts.push(memText);
+    if (MEM_SUPPORTED && config.memory.enabled && memText) parts.push(memText);
     ctx?.ui.setStatus(STATUS_KEY, parts.join(" | "));
   }
 
@@ -60,7 +60,7 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  const mem = IS_MACOS
+  const mem = MEM_SUPPORTED
     ? createMemoryMonitor({
         onUpdate: (text) => {
           memText = text;
@@ -82,7 +82,7 @@ export default function (pi: ExtensionAPI) {
     else net.stop();
   }
   async function applyMemoryConfig() {
-    if (!IS_MACOS || !mem) return;
+    if (!MEM_SUPPORTED || !mem) return;
     if (config.memory.enabled) await mem.start();
     else mem.stop();
   }
@@ -101,14 +101,14 @@ export default function (pi: ExtensionAPI) {
       `network.enabled  = ${config.network.enabled}`,
       `network.display  = ${netText || "(no data yet)"}`,
     ];
-    if (IS_MACOS) {
+    if (MEM_SUPPORTED) {
       lines.push(
         `memory.enabled   = ${config.memory.enabled}`,
         `memory.warning   = ${config.memory.warning}`,
         `memory.display   = ${memText || "(no data yet)"}`,
       );
     } else {
-      lines.push("memory           = (macOS only, not available)");
+      lines.push("memory           = (not supported on this platform)");
     }
     lines.push(
       "─".repeat(50),
@@ -139,7 +139,7 @@ export default function (pi: ExtensionAPI) {
       "    /sys-monitor net stat            Show totals widget (auto-clears 10s)",
       "    /sys-monitor net stat reset      Reset totals to 0",
       "",
-      "  Memory (macOS only):",
+      "  Memory:",
       "    /sys-monitor mem [N]             Top N processes by RSS (default 20)",
       "    /sys-monitor mem top [N]         Same as above",
       "    /sys-monitor mem on|off|toggle   Enable / disable / toggle footer display",
@@ -344,8 +344,8 @@ export default function (pi: ExtensionAPI) {
 
   // ── mem handler ──
   async function handleMem(rest: string[], cmdCtx: ExtensionContext) {
-    if (!IS_MACOS || !mem) {
-      cmdCtx.ui.notify("Memory monitor is macOS only.", "warning");
+    if (!MEM_SUPPORTED || !mem) {
+      cmdCtx.ui.notify("Memory monitor is not supported on this platform.", "warning");
       return;
     }
     const head = rest[0] || "";
@@ -403,10 +403,10 @@ export default function (pi: ExtensionAPI) {
       );
       return;
     }
-    const anyOn = config.network.enabled || (IS_MACOS && config.memory.enabled);
+    const anyOn = config.network.enabled || (MEM_SUPPORTED && config.memory.enabled);
     const next = op === "toggle" ? !anyOn : op === "on";
     config.network.enabled = next;
-    if (IS_MACOS) config.memory.enabled = next;
+    if (MEM_SUPPORTED) config.memory.enabled = next;
     saveConfig(config);
     await Promise.all([applyNetworkConfig(), applyMemoryConfig()]);
     render();
